@@ -1,1 +1,1 @@
-# Game State Management
+# Event Based Architecture
