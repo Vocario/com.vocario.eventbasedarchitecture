@@ -11,7 +11,7 @@ namespace Vocario.EventBasedArchitecture.Tests
         private EventBasedArchitecture.GameEvent _gameEvent = null;
 
         [SetUp]
-        public void SetUp() => _gameEvent = new EventBasedArchitecture.GameEvent();
+        public void SetUp() => _gameEvent = new EventBasedArchitecture.GameEvent("Test");
 
         [Test]
         public void AddListenerSuccess()
