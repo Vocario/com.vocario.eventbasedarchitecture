@@ -12,6 +12,7 @@ namespace Vocario.EventBasedArchitecture
     {
         [SerializeField]
         private string _name;
+        public string Name => _name;
 
         public GameEvent(string name)
         {

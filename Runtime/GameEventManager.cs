@@ -2,8 +2,6 @@
 
 using UnityEngine;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 
 // TODO Make scriptable object dependant of specified enum through editor, maybe even create a enum based static getter?
@@ -14,29 +12,43 @@ namespace Vocario.EventBasedArchitecture
     public class GameEventManager : ScriptableObject
     {
         [SerializeField]
-        private EventsMap _events;
+        protected EventsMap _events;
+        protected Type _enumType = null;
+        public EventsMap Events => _events;
 
-        public void ReloadEvents()
+        public void Load(Type enumType)
+        {
+            _enumType = enumType;
+            RefreshEvents();
+        }
+
+#if UNITY_EDITOR
+        // [UnityEditor.Callbacks.DidReloadScripts]
+        // private void RefreshEventsOnScriptsReload()
+        // {
+        //     if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+        //     {
+        //         EditorApplication.delayCall += RefreshEventsOnScriptsReload;
+        //         return;
+        //     }
+
+        //     EditorApplication.delayCall += RefreshEvents;
+        // }
+
+
+        public void RefreshEvents()
         {
             _events = new EventsMap();
-            IEnumerable<Type> enumTypes = AppDomain.CurrentDomain
-                .GetAssemblies()
-                .Select(assembly => assembly.GetTypes())
-                .SelectMany(x => x)
-                .Where(type => type.IsDefined(typeof(GameEventsAttribute), false));
+            string[] eventIds = Enum.GetNames(_enumType);
 
-            foreach (Type enumType in enumTypes)
+            foreach (string eventId in eventIds)
             {
-                string[] eventIds = Enum.GetNames(enumType);
-
-                foreach (string eventId in eventIds)
-                {
-                    _events.Add((Enum) Enum.Parse(enumType, eventId), new GameEvent(eventId));
-                }
+                _events.Add((Enum) Enum.Parse(_enumType, eventId), new GameEvent(eventId));
             }
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssets();
         }
+#endif
 
         // TODO Remove code repetition
         // TODO Create event not found exception
