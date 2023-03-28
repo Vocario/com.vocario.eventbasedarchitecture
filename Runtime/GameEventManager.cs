@@ -3,6 +3,7 @@
 using UnityEngine;
 using System;
 using UnityEditor;
+using System.Collections.Generic;
 
 // TODO Make scriptable object dependant of specified enum through editor, maybe even create a enum based static getter?
 // TODO Reload events on script compilations
@@ -14,6 +15,7 @@ namespace Vocario.EventBasedArchitecture
         [SerializeField]
         protected EventsMap _events;
         protected Type _enumType = null;
+        public Type EnumType => _enumType;
         public EventsMap Events => _events;
 
         public void Load(Type enumType)
@@ -38,32 +40,62 @@ namespace Vocario.EventBasedArchitecture
 
         public void RefreshEvents()
         {
-            _events = new EventsMap();
+            var newMap = new EventsMap();
             string[] eventIds = Enum.GetNames(_enumType);
 
             foreach (string eventId in eventIds)
             {
-                _events.Add((Enum) Enum.Parse(_enumType, eventId), new GameEvent(eventId));
+                int eventIndex = (int) Enum.Parse(_enumType, eventId);
+                if (_events != null && _events.ContainsKey(eventIndex))
+                {
+                    newMap.Add(eventIndex, _events[ eventIndex ]);
+                    continue;
+                }
+
+                newMap.Add(eventIndex, new GameEvent(eventId));
             }
+            _events = newMap;
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssets();
         }
 #endif
 
-        // TODO Remove code repetition
-        // TODO Create event not found exception
-        public void RaiseEvent(Enum eventId)
+        public static void RaiseEvent(Enum eventId)
         {
-            int id = Convert.ToInt32(eventId);
-            if (!_events.ContainsKey(id))
-            {
-                Debug.LogError($"Event Raised Failed: could not find event with ID {eventId}.");
-                return;
-            }
-            _events[ id ].Invoke();
+            GameEventManager eventManager = GetEventManager(eventId.GetType());
+            GameEvent gameEvent = eventManager.GetGameEvent(eventId);
+            gameEvent.Invoke();
             Debug.Log($"{eventId} - Event Raised");
         }
 
+        protected static Dictionary<Type, GameEventManager> _cachedEventManagers = new Dictionary<Type, GameEventManager>();
+
+        protected static GameEventManager GetEventManager(Type enumType)
+        {
+            if (_cachedEventManagers.ContainsKey(enumType))
+            {
+                return _cachedEventManagers[ enumType ];
+            }
+
+            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");  //FindAssets uses tags check documentation for more info
+
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameEventManager eventManager = AssetDatabase.LoadAssetAtPath<GameEventManager>(path);
+
+                if (eventManager.EnumType == enumType)
+                {
+                    _cachedEventManagers[ enumType ] = eventManager;
+                    return eventManager;
+                }
+            }
+
+            // TODO Throw event not found exception
+            return null;
+        }
+
+        // TODO Create event not found exception
         public GameEvent GetGameEvent(Enum eventId)
         {
             int id = Convert.ToInt32(eventId);

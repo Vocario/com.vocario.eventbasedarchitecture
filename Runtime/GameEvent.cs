@@ -13,17 +13,15 @@ namespace Vocario.EventBasedArchitecture
         [SerializeField]
         private string _name;
         public string Name => _name;
+        //TODO Change to serializable hashset
+        [SerializeReference]
+        private List<AGameEventListener> _gameEventListeners = new List<AGameEventListener>();
 
         public GameEvent(string name)
         {
             _gameEventListeners = new List<AGameEventListener>();
             _name = name;
         }
-
-        //TODO Change to serializable hashset
-        [SerializeReference]
-        private List<AGameEventListener> _gameEventListeners = new List<AGameEventListener>();
-
 
         public bool Register(AGameEventListener gameEventListener)
         {

@@ -12,6 +12,7 @@ namespace Vocario.EventBasedArchitecture
         protected GameEvent _gameEvent;
         protected AGameEventListener(GameEvent gameEvent) => _gameEvent = gameEvent;
 
+        public string GameEventName => _gameEvent.Name;
         public abstract void RaiseEvent();
         public void Register() => _gameEvent?.Register(this);
         public void Deregister() => _gameEvent?.Deregister(this);
