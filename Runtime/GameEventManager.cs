@@ -14,13 +14,33 @@ namespace Vocario.EventBasedArchitecture
     {
         [SerializeField]
         protected EventsMap _events;
-        protected Type _enumType = null;
-        public Type EnumType => _enumType;
+        // TODO Properly serialize type
+        [SerializeField]
+        protected string _enumTypeString = null;
+        protected Type _enumType;
+        public Type EnumType
+        {
+            get
+            {
+                if (_enumType != null)
+                {
+                    return _enumType;
+                }
+                _enumType = Utility.GetType(_enumTypeString);
+                return _enumType;
+            }
+            set
+            {
+                _enumType = value;
+                _enumTypeString = _enumType.FullName;
+            }
+        }
+
         public EventsMap Events => _events;
 
         public void Load(Type enumType)
         {
-            _enumType = enumType;
+            EnumType = enumType;
             RefreshEvents();
         }
 
@@ -41,11 +61,11 @@ namespace Vocario.EventBasedArchitecture
         public void RefreshEvents()
         {
             var newMap = new EventsMap();
-            string[] eventIds = Enum.GetNames(_enumType);
+            string[] eventIds = Enum.GetNames(EnumType);
 
             foreach (string eventId in eventIds)
             {
-                int eventIndex = (int) Enum.Parse(_enumType, eventId);
+                int eventIndex = (int) Enum.Parse(EnumType, eventId);
                 if (_events != null && _events.ContainsKey(eventIndex))
                 {
                     newMap.Add(eventIndex, _events[ eventIndex ]);
@@ -72,7 +92,7 @@ namespace Vocario.EventBasedArchitecture
 
         protected static GameEventManager GetEventManager(Type enumType)
         {
-            if (_cachedEventManagers.ContainsKey(enumType))
+            if (_cachedEventManagers.ContainsKey(enumType) && _cachedEventManagers[ enumType ] != null)
             {
                 return _cachedEventManagers[ enumType ];
             }
