@@ -43,7 +43,8 @@ namespace Vocario.EventBasedArchitecture
         protected void DisplayEventEnumSelection()
         {
             EditorGUI.BeginChangeCheck();
-            _indexTypeSelected = EditorGUILayout.Popup("Available event groups", _indexTypeSelected, _options.Select(x => x.ToString()).ToArray());
+            string[] dropdownOptions = _options.Select(x => x.ToString()).ToArray();
+            _indexTypeSelected = EditorGUILayout.Popup("Available event groups", _indexTypeSelected, dropdownOptions);
 
             if (EditorGUI.EndChangeCheck())
             {

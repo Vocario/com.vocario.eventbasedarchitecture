@@ -88,7 +88,8 @@ namespace Vocario.EventBasedArchitecture
             Debug.Log($"{eventId} - Event Raised");
         }
 
-        protected static Dictionary<Type, GameEventManager> _cachedEventManagers = new Dictionary<Type, GameEventManager>();
+        protected static Dictionary<Type, GameEventManager> _cachedEventManagers
+            = new Dictionary<Type, GameEventManager>();
 
         protected static GameEventManager GetEventManager(Type enumType)
         {
@@ -97,7 +98,8 @@ namespace Vocario.EventBasedArchitecture
                 return _cachedEventManagers[ enumType ];
             }
 
-            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");  //FindAssets uses tags check documentation for more info
+            //FindAssets uses tags check documentation for more info
+            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");  
 
             foreach (string guid in guids)
             {
