@@ -8,7 +8,8 @@ namespace Vocario.EventBasedArchitecture
     {
         protected Action _onEventRaised;
 
-        public GameEventListener(GameEvent gameEvent, Action onEventRaised) : base(gameEvent) => _onEventRaised = onEventRaised;
+        public GameEventListener(GameEvent gameEvent, Action onEventRaised) : base(gameEvent) =>
+            _onEventRaised = onEventRaised;
 
         public override void RaiseEvent() => _onEventRaised?.Invoke();
     }

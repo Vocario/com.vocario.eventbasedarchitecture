@@ -2,60 +2,151 @@
 
 using UnityEngine;
 using System;
+using UnityEditor;
 using System.Collections.Generic;
-using System.Linq;
 
+// TODO Make scriptable object dependant of specified enum through editor, maybe even create a enum based static getter?
+// TODO Reload events on script compilations
 namespace Vocario.EventBasedArchitecture
 {
     [CreateAssetMenu(fileName = "GameEventManager", menuName = "Vocario/GameEventManager", order = 0)]
     public class GameEventManager : ScriptableObject
     {
-        // TODO Add serializable dictionary
-        private Dictionary<Enum, GameEvent> _events = new Dictionary<Enum, GameEvent>();
-
-        private void OnEnable()
+        [SerializeField]
+        protected EventsMap _events;
+        // TODO Properly serialize type
+        [SerializeField]
+        protected string _enumTypeString = null;
+        protected Type _enumType;
+        public Type EnumType
         {
-            IEnumerable<Type> enumTypes = AppDomain.CurrentDomain
-                .GetAssemblies()
-                .Select(assembly => assembly.GetTypes())
-                .SelectMany(x => x)
-                .Where(type => type.IsDefined(typeof(GameEventsAttribute), false));
-
-            foreach (Type enumType in enumTypes)
+            get
             {
-                string[] eventIds = Enum.GetNames(enumType);
-                foreach (string eventId in eventIds)
+                if (_enumType != null)
                 {
-                    _events.Add((Enum) Enum.Parse(enumType, eventId), new GameEvent());
+                    return _enumType;
                 }
-
+                _enumType = Utility.GetType(_enumTypeString);
+                return _enumType;
+            }
+            set
+            {
+                _enumType = value;
+                _enumTypeString = _enumType.FullName;
             }
         }
 
-        public void RaiseEvent(Enum eventId)
+        public EventsMap Events => _events;
+
+        public void Load(Type enumType)
         {
-            if (!_events.ContainsKey(eventId))
+            EnumType = enumType;
+            RefreshEvents();
+        }
+
+#if UNITY_EDITOR
+        // [UnityEditor.Callbacks.DidReloadScripts]
+        // private void RefreshEventsOnScriptsReload()
+        // {
+        //     if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+        //     {
+        //         EditorApplication.delayCall += RefreshEventsOnScriptsReload;
+        //         return;
+        //     }
+
+        //     EditorApplication.delayCall += RefreshEvents;
+        // }
+
+
+        public void RefreshEvents()
+        {
+            var newMap = new EventsMap();
+            string[] eventIds = Enum.GetNames(EnumType);
+
+            foreach (string eventId in eventIds)
             {
-                Debug.LogError($"Event Raised Failed: could not find event with ID {eventId}.");
-                return;
+                int eventIndex = (int) Enum.Parse(EnumType, eventId);
+                if (_events != null && _events.ContainsKey(eventIndex))
+                {
+                    newMap.Add(eventIndex, _events[ eventIndex ]);
+                    continue;
+                }
+
+                newMap.Add(eventIndex, new GameEvent(eventId));
             }
-            _events[ eventId ].Invoke();
+            _events = newMap;
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+        }
+#endif
+
+        public static void RaiseEvent(Enum eventId)
+        {
+            GameEventManager eventManager = GetEventManager(eventId.GetType());
+            GameEvent gameEvent = eventManager.GetGameEvent(eventId);
+            gameEvent.Invoke();
             Debug.Log($"{eventId} - Event Raised");
+        }
+
+        protected static Dictionary<Type, GameEventManager> _cachedEventManagers
+            = new Dictionary<Type, GameEventManager>();
+
+        protected static GameEventManager GetEventManager(Type enumType)
+        {
+            if (_cachedEventManagers.ContainsKey(enumType) && _cachedEventManagers[ enumType ] != null)
+            {
+                return _cachedEventManagers[ enumType ];
+            }
+
+            //FindAssets uses tags check documentation for more info
+            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");
+
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameEventManager eventManager = AssetDatabase.LoadAssetAtPath<GameEventManager>(path);
+
+                if (eventManager.EnumType == enumType)
+                {
+                    _cachedEventManagers[ enumType ] = eventManager;
+                    return eventManager;
+                }
+            }
+
+            // TODO Throw event not found exception
+            return null;
+        }
+
+        // TODO Create event not found exception
+        public GameEvent GetGameEvent(Enum eventId)
+        {
+            int id = Convert.ToInt32(eventId);
+            if (!_events.ContainsKey(id))
+            {
+                Debug.LogError($"Get Event Failed: could not find event with ID {eventId}.");
+                return null;
+            }
+
+            return _events[ id ];
         }
 
         public AGameEventListener CreateListener(Enum eventId, Action onEventRaised)
         {
-            if (!_events.ContainsKey(eventId))
+            int id = Convert.ToInt32(eventId);
+            if (!_events.ContainsKey(id))
             {
                 Debug.LogError($"Event Register Failed: could not find event with ID {eventId}.");
                 return null;
             }
-            GameEvent gameEvent = _events[ eventId ];
+            GameEvent gameEvent = _events[ id ];
             // TODO: Add some object pooling for the listener maybe
             var listener = new GameEventListener(gameEvent, onEventRaised);
 
-            _ = _events[ eventId ].Register(listener);
+            _ = _events[ id ].Register(listener);
             return listener;
         }
     }
+
+    [Serializable]
+    public class EventsMap : SerializableDictionary<int, GameEvent> { }
 }

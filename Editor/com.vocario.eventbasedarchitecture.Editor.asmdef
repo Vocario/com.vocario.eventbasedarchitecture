@@ -1,0 +1,18 @@
+{
+    "name": "com.vocario.eventbasedarchitecture.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:c008b7ec920a267488f1b2ca7740a4c5"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
