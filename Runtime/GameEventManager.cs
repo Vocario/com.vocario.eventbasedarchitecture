@@ -99,7 +99,7 @@ namespace Vocario.EventBasedArchitecture
             }
 
             //FindAssets uses tags check documentation for more info
-            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");  
+            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");
 
             foreach (string guid in guids)
             {
