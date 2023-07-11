@@ -35,6 +35,8 @@ namespace Vocario.EventBasedArchitecture
 
         public bool Deregister(AGameEventListener gameEventListener) => _gameEventListeners.Remove(gameEventListener);
 
+        public void DeregisterAll() => _gameEventListeners.Clear();
+
         public void Invoke()
         {
             foreach (AGameEventListener gameEventListener in _gameEventListeners.Reverse<AGameEventListener>())

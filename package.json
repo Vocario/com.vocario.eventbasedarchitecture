@@ -1,6 +1,6 @@
 {
     "name": "com.vocario.eventbasedarchitecture",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "displayName": "Event Based Architecture",
     "description": "Even based arquitecture for Unity development",
     "unity": "2021.3"

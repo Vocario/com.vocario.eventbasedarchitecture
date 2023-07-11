@@ -41,7 +41,9 @@ namespace Vocario.EventBasedArchitecture
         public void Load(Type enumType)
         {
             EnumType = enumType;
+#if UNITY_EDITOR
             RefreshEvents();
+#endif
         }
 
 #if UNITY_EDITOR
@@ -78,7 +80,6 @@ namespace Vocario.EventBasedArchitecture
             EditorUtility.SetDirty(this);
             AssetDatabase.SaveAssets();
         }
-#endif
 
         public static void RaiseEvent(Enum eventId)
         {
@@ -116,6 +117,7 @@ namespace Vocario.EventBasedArchitecture
             // TODO Throw event not found exception
             return null;
         }
+#endif
 
         // TODO Create event not found exception
         public GameEvent GetGameEvent(Enum eventId)
