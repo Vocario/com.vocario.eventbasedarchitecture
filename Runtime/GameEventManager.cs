@@ -4,151 +4,169 @@ using UnityEngine;
 using System;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Linq;
 
-// TODO Make scriptable object dependant of specified enum through editor, maybe even create a enum based static getter?
-// TODO Reload events on script compilations
 namespace Vocario.EventBasedArchitecture
 {
     [CreateAssetMenu(fileName = "GameEventManager", menuName = "Vocario/GameEventManager", order = 0)]
     public class GameEventManager : ScriptableObject
     {
-        [SerializeField]
-        protected EventsMap _events;
-        // TODO Properly serialize type
-        [SerializeField]
-        protected string _enumTypeString = null;
-        protected Type _enumType;
-        public Type EnumType
+        protected static GameEventManager _instance;
+        public static GameEventManager Instance
         {
             get
             {
-                if (_enumType != null)
-                {
-                    return _enumType;
-                }
-                _enumType = Utility.GetType(_enumTypeString);
-                return _enumType;
-            }
-            set
-            {
-                _enumType = value;
-                _enumTypeString = _enumType.FullName;
+                TrySetInstance();
+
+                return _instance ?? throw new Exception("Create a game event manager before referencing it in runtime");
             }
         }
 
+        protected static void TrySetInstance()
+        {
+            if (_instance == null)
+            {
+                GameEventManager[] instances = Resources.FindObjectsOfTypeAll<GameEventManager>();
+                _instance = (instances.Length > 0) ? instances[ 0 ] : null;
+            }
+        }
+
+#if UNITY_EDITOR
+
+        [UnityEditor.Callbacks.DidReloadScripts]
+        private static void RefreshEventsOnScriptsReload()
+        {
+            TrySetInstance();
+            if (_instance == null)
+            {
+                return;
+            }
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall += RefreshEventsOnScriptsReload;
+                return;
+            }
+
+            EditorApplication.delayCall += RefreshEventsCall;
+        }
+
+        public static void RefreshEventsCall() => RefreshEvents();
+
+
+        public static bool RefreshEvents()
+        {
+            var eventInstances = AppDomain.CurrentDomain.GetAssemblies()
+                .Aggregate(new List<Type>(), (accumulator, currentAssembly) =>
+                {
+                    foreach (Type type in currentAssembly.GetTypes())
+                    {
+                        accumulator.Add(type);
+                    }
+                    return accumulator;
+                })
+                .Where(type => type.IsClass && type.IsPublic && !type.IsAbstract && type.IsSubclassOf(typeof(AGameEvent)))
+                .Select(type =>
+                {
+                    var ev = (AGameEvent) Activator.CreateInstance(type);
+                    return ev;
+                })
+                .ToList();
+
+
+            var newMap = new EventsMap();
+            foreach (AGameEvent gameEvent in eventInstances)
+            {
+                newMap.Add(gameEvent.GetType().ToString(), gameEvent);
+            }
+
+            if (newMap == Instance._events)
+            {
+                return false;
+            }
+
+            Instance._events = newMap;
+            EditorUtility.SetDirty(Instance);
+            AssetDatabase.SaveAssets();
+            return true;
+        }
+
+#endif
+
+        [SerializeField]
+        protected EventsMap _events;
         public EventsMap Events => _events;
 
-        public void Load(Type enumType)
-        {
-            EnumType = enumType;
-#if UNITY_EDITOR
-            RefreshEvents();
-#endif
-        }
-
-#if UNITY_EDITOR
-        // [UnityEditor.Callbacks.DidReloadScripts]
-        // private void RefreshEventsOnScriptsReload()
-        // {
-        //     if (EditorApplication.isCompiling || EditorApplication.isUpdating)
-        //     {
-        //         EditorApplication.delayCall += RefreshEventsOnScriptsReload;
-        //         return;
-        //     }
-
-        //     EditorApplication.delayCall += RefreshEvents;
-        // }
-
-
-        public void RefreshEvents()
-        {
-            var newMap = new EventsMap();
-            string[] eventIds = Enum.GetNames(EnumType);
-
-            foreach (string eventId in eventIds)
-            {
-                int eventIndex = (int) Enum.Parse(EnumType, eventId);
-                if (_events != null && _events.ContainsKey(eventIndex))
-                {
-                    newMap.Add(eventIndex, _events[ eventIndex ]);
-                    continue;
-                }
-
-                newMap.Add(eventIndex, new GameEvent(eventId));
-            }
-            _events = newMap;
-            EditorUtility.SetDirty(this);
-            AssetDatabase.SaveAssets();
-        }
-
-        public static void RaiseEvent(Enum eventId)
-        {
-            GameEventManager eventManager = GetEventManager(eventId.GetType());
-            GameEvent gameEvent = eventManager.GetGameEvent(eventId);
-            gameEvent.Invoke();
-            Debug.Log($"{eventId} - Event Raised");
-        }
-
-        protected static Dictionary<Type, GameEventManager> _cachedEventManagers
-            = new Dictionary<Type, GameEventManager>();
-
-        protected static GameEventManager GetEventManager(Type enumType)
-        {
-            if (_cachedEventManagers.ContainsKey(enumType) && _cachedEventManagers[ enumType ] != null)
-            {
-                return _cachedEventManagers[ enumType ];
-            }
-
-            //FindAssets uses tags check documentation for more info
-            string[] guids = AssetDatabase.FindAssets($"t:{typeof(GameEventManager).Name}");
-
-            foreach (string guid in guids)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                GameEventManager eventManager = AssetDatabase.LoadAssetAtPath<GameEventManager>(path);
-
-                if (eventManager.EnumType == enumType)
-                {
-                    _cachedEventManagers[ enumType ] = eventManager;
-                    return eventManager;
-                }
-            }
-
-            // TODO Throw event not found exception
-            return null;
-        }
-#endif
-
         // TODO Create event not found exception
-        public GameEvent GetGameEvent(Enum eventId)
+        protected AGameEvent<TParams> GetGameEvent<TEvent, TParams>() where TParams : struct
         {
-            int id = Convert.ToInt32(eventId);
-            if (!_events.ContainsKey(id))
+            string eventName = typeof(TEvent).ToString();
+            if (!_events.ContainsKey(eventName))
             {
-                Debug.LogError($"Get Event Failed: could not find event with ID {eventId}.");
+                Debug.LogError($"Get Event Failed: could not find event with ID {eventName}.");
                 return null;
             }
 
-            return _events[ id ];
+            return (AGameEvent<TParams>) _events[ eventName ];
         }
 
-        public AGameEventListener CreateListener(Enum eventId, Action onEventRaised)
+        public static bool RaiseEvent<TEvent, TParams>(TParams callParams)
+            where TEvent : AGameEvent<TParams>
+            where TParams : struct
         {
-            int id = Convert.ToInt32(eventId);
-            if (!_events.ContainsKey(id))
+            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            if (gameEvent == null)
             {
-                Debug.LogError($"Event Register Failed: could not find event with ID {eventId}.");
-                return null;
+                return false;
             }
-            GameEvent gameEvent = _events[ id ];
-            // TODO: Add some object pooling for the listener maybe
-            var listener = new GameEventListener(gameEvent, onEventRaised);
 
-            _ = _events[ id ].Register(listener);
-            return listener;
+            ((AGameEvent<TParams>) Instance._events[ gameEvent.Name ]).Invoke(callParams);
+            return true;
+        }
+
+        public static bool AddListener<TEvent, TParams>(object parent, Action<TParams> handle)
+            where TEvent : AGameEvent<TParams>
+            where TParams : struct
+        {
+            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+            var listener = new GameEventListener<TParams>(gameEvent, parent, handle);
+
+            return ((AGameEvent<TParams>) Instance._events[ gameEvent.Name ]).Register(listener);
+        }
+
+        public static bool RemoveListener<TEvent, TParams>(object parent, Action<TParams> handle)
+            where TEvent : AGameEvent<TParams>
+            where TParams : struct
+        {
+            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+            var listener = new GameEventListener<TParams>(gameEvent, parent, handle);
+
+            return ((AGameEvent<TParams>) Instance._events[ gameEvent.Name ]).Deregister(listener);
+        }
+
+        public static bool RemoveAllListeners<TEvent, TParams>()
+            where TEvent : AGameEvent<TParams>
+            where TParams : struct
+        {
+            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+            gameEvent.DeregisterAll();
+            return true;
         }
     }
 
     [Serializable]
-    public class EventsMap : SerializableDictionary<int, GameEvent> { }
+    public class EventsMap : SerializableDictionary<string, AGameEvent> { }
 }
+
+

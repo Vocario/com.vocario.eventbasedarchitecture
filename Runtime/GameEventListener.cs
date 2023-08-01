@@ -4,13 +4,19 @@ using System;
 
 namespace Vocario.EventBasedArchitecture
 {
-    public class GameEventListener : AGameEventListener
+    public class GameEventListener<TParams> : AGameEventListener<TParams> where TParams : struct
     {
-        protected Action _onEventRaised;
+        protected object _parent;
+        protected Action<TParams> _onEventRaised;
 
-        public GameEventListener(GameEvent gameEvent, Action onEventRaised) : base(gameEvent) =>
+        public GameEventListener(AGameEvent<TParams> gameEvent, object parent, Action<TParams> onEventRaised) : base(gameEvent)
+        {
+            _parent = parent;
             _onEventRaised = onEventRaised;
+        }
 
-        public override void RaiseEvent() => _onEventRaised?.Invoke();
+        public override void RaiseEvent(TParams param) => _onEventRaised?.Invoke(param);
+
+        public override int GetHashCode() => HashCode.Combine(_parent, _onEventRaised);
     }
 }

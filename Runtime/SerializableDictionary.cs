@@ -23,7 +23,7 @@ public abstract class SerializableDictionaryBase<TKey, TValue, TValueStorage> : 
 	Dictionary<TKey, TValue> m_dict;
 	[SerializeField]
 	TKey[] m_keys;
-	[SerializeField]
+	[SerializeReference]
 	TValueStorage[] m_values;
 
 	public SerializableDictionaryBase()
