@@ -97,7 +97,7 @@ namespace Vocario.EventBasedArchitecture
         public EventsMap Events => _events;
 
         // TODO Create event not found exception
-        protected AGameEvent<TParams> GetGameEvent<TEvent, TParams>() where TParams : struct
+        protected AGameEvent GetGameEvent<TEvent>() where TEvent : AGameEvent
         {
             string eventName = typeof(TEvent).ToString();
             if (!_events.ContainsKey(eventName))
@@ -106,14 +106,14 @@ namespace Vocario.EventBasedArchitecture
                 return null;
             }
 
-            return (AGameEvent<TParams>) _events[ eventName ];
+            return _events[ eventName ];
         }
 
         public static bool RaiseEvent<TEvent, TParams>(TParams callParams)
             where TEvent : AGameEvent<TParams>
             where TParams : struct
         {
-            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            var gameEvent = (AGameEvent<TParams>) Instance.GetGameEvent<TEvent>();
             if (gameEvent == null)
             {
                 return false;
@@ -127,7 +127,7 @@ namespace Vocario.EventBasedArchitecture
             where TEvent : AGameEvent<TParams>
             where TParams : struct
         {
-            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            var gameEvent = (AGameEvent<TParams>) Instance.GetGameEvent<TEvent>();
             if (gameEvent == null)
             {
                 return false;
@@ -141,7 +141,7 @@ namespace Vocario.EventBasedArchitecture
             where TEvent : AGameEvent<TParams>
             where TParams : struct
         {
-            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            var gameEvent = (AGameEvent<TParams>) Instance.GetGameEvent<TEvent>();
             if (gameEvent == null)
             {
                 return false;
@@ -151,11 +151,49 @@ namespace Vocario.EventBasedArchitecture
             return ((AGameEvent<TParams>) Instance._events[ gameEvent.Name ]).Deregister(listener);
         }
 
-        public static bool RemoveAllListeners<TEvent, TParams>()
-            where TEvent : AGameEvent<TParams>
-            where TParams : struct
+        public static bool RaiseEvent<TEvent>()
+            where TEvent : AGameEvent
         {
-            AGameEvent<TParams> gameEvent = Instance.GetGameEvent<TEvent, TParams>();
+            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+
+            Instance._events[ gameEvent.Name ].Invoke();
+            return true;
+        }
+
+        public static bool AddListener<TEvent>(object parent, Action handle)
+            where TEvent : AGameEvent
+        {
+            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+            var listener = new GameEventListener(gameEvent, parent, handle);
+
+            return Instance._events[ gameEvent.Name ].Register(listener);
+        }
+
+        public static bool RemoveListener<TEvent>(object parent, Action handle)
+            where TEvent : AGameEvent
+        {
+            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
+            if (gameEvent == null)
+            {
+                return false;
+            }
+            var listener = new GameEventListener(gameEvent, parent, handle);
+
+            return Instance._events[ gameEvent.Name ].Deregister(listener);
+        }
+
+        public static bool RemoveAllListeners<TEvent>()
+            where TEvent : AGameEvent
+        {
+            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
             if (gameEvent == null)
             {
                 return false;

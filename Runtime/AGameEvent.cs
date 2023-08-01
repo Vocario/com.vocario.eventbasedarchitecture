@@ -14,11 +14,7 @@ namespace Vocario.EventBasedArchitecture
         public string Name => _name;
 
         public AGameEvent() => _name = GetType().ToString();
-    }
 
-    [Serializable]
-    public abstract class AGameEvent<TParams> : AGameEvent where TParams : struct
-    {
         [Serializable]
         protected class GameEventListenerDictionary : SerializableDictionary<int, AGameEventListener> { }
 
@@ -31,18 +27,26 @@ namespace Vocario.EventBasedArchitecture
             {
                 return false;
             }
-            Debug.Log($"Code: {gameEventListener.GetHashCode()}");
             _gameEventListeners.Add(gameEventListener.GetHashCode(), gameEventListener);
             return true;
         }
 
-        internal bool Deregister(AGameEventListener gameEventListener)
-        {
-            Debug.Log($"Code: {gameEventListener.GetHashCode()}");
-            return _gameEventListeners.Remove(gameEventListener.GetHashCode());
-        }
+        internal bool Deregister(AGameEventListener gameEventListener) => _gameEventListeners.Remove(gameEventListener.GetHashCode());
 
         internal void DeregisterAll() => _gameEventListeners.Clear();
+
+        internal void Invoke()
+        {
+            foreach (AGameEventListener gameEventListener in _gameEventListeners.Values.Reverse<AGameEventListener>())
+            {
+                gameEventListener.RaiseEvent();
+            }
+        }
+    }
+
+    [Serializable]
+    public abstract class AGameEvent<TParams> : AGameEvent where TParams : struct
+    {
 
         internal void Invoke(TParams param)
         {
