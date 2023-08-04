@@ -94,7 +94,6 @@ namespace Vocario.EventBasedArchitecture
 
         [SerializeField]
         protected EventsMap _events;
-        public EventsMap Events => _events;
 
         // TODO Create event not found exception
         protected AGameEvent GetGameEvent<TEvent>() where TEvent : AGameEvent
@@ -108,6 +107,20 @@ namespace Vocario.EventBasedArchitecture
 
             return _events[ eventName ];
         }
+
+        // TODO Remove after second state machine refactor
+        public AGameEvent GetGameEventByName(string eventName)
+        {
+            if (!_events.ContainsKey(eventName))
+            {
+                Debug.LogError($"Get Event Failed: could not find event with ID {eventName}.");
+                return null;
+            }
+
+            return _events[ eventName ];
+        }
+
+        public string[] GetEventNames() => _events.Keys.ToArray();
 
         public static bool RaiseEvent<TEvent, TParams>(TParams callParams)
             where TEvent : AGameEvent<TParams>
@@ -164,6 +177,23 @@ namespace Vocario.EventBasedArchitecture
             return true;
         }
 
+        public static bool TryRaiseEventByType(Type eventType)
+        {
+            if (!eventType.IsSubclassOf(typeof(AGameEvent)))
+            {
+                Debug.LogError($"TryRaiseEventByType: Supplied type is not a game event.");
+                return false;
+            }
+            AGameEvent gameEvent = Instance.GetGameEventByName(eventType.ToString());
+            if (gameEvent == null)
+            {
+                return false;
+            }
+
+            Instance._events[ gameEvent.Name ].Invoke();
+            return true;
+        }
+
         public static bool AddListener<TEvent>(object parent, Action handle)
             where TEvent : AGameEvent
         {
@@ -175,6 +205,13 @@ namespace Vocario.EventBasedArchitecture
             var listener = new GameEventListener(gameEvent, parent, handle);
 
             return Instance._events[ gameEvent.Name ].Register(listener);
+        }
+
+        public static bool AddListener<TEvent>(AGameEventListener listener)
+            where TEvent : AGameEvent
+        {
+            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
+            return gameEvent != null && Instance._events[ gameEvent.Name ].Register(listener);
         }
 
         public static bool RemoveListener<TEvent>(object parent, Action handle)

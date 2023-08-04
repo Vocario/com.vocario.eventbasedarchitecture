@@ -21,7 +21,7 @@ namespace Vocario.EventBasedArchitecture
         [SerializeField]
         protected GameEventListenerDictionary _gameEventListeners = new GameEventListenerDictionary();
 
-        internal bool Register(AGameEventListener gameEventListener)
+        public bool Register(AGameEventListener gameEventListener)
         {
             if (_gameEventListeners.Contains(gameEventListener))
             {
