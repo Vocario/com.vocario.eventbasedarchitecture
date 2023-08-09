@@ -67,6 +67,11 @@ namespace Vocario.EventBasedArchitecture
             var newMap = new EventsMap();
             foreach (AGameEvent gameEvent in eventInstances)
             {
+                if (Instance._events.ContainsKey(gameEvent.Name))
+                {
+                    newMap.Add(gameEvent.Name, Instance._events[ gameEvent.Name ]);
+                    continue;
+                }
                 newMap.Add(gameEvent.Name, gameEvent);
             }
 

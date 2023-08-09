@@ -8,13 +8,10 @@ namespace Vocario.EventBasedArchitecture
     [Serializable]
     public abstract class AGameEventListener
     {
-        [SerializeReference, HideInInspector]
-        protected AGameEvent _gameEvent;
+        [SerializeField]
+        protected string _eventTypeName;
 
-        public string GameEventName => _gameEvent.Name;
-        protected AGameEventListener(AGameEvent gameEvent) => _gameEvent = gameEvent;
-        public void Register() => _gameEvent?.Register(this);
-        public void Deregister() => _gameEvent?.Deregister(this);
+        protected AGameEventListener(AGameEvent gameEvent) => _eventTypeName = gameEvent.Name;
         public abstract void RaiseEvent();
     }
 

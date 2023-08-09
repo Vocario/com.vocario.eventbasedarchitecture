@@ -22,6 +22,12 @@ namespace Vocario.EventBasedArchitecture
         {
             // TODO Add enum creation and generate C# code options
             base.OnInspectorGUI();
+
+            if (GUILayout.Button("Force Save"))
+            {
+                EditorUtility.SetDirty(target);
+                AssetDatabase.SaveAssets();
+            }
         }
     }
 }
