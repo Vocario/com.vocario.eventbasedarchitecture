@@ -55,16 +55,7 @@ namespace Vocario.EventBasedArchitecture
 
         public static bool RefreshEvents()
         {
-            var eventInstances = AppDomain.CurrentDomain.GetAssemblies()
-                .Aggregate(new List<Type>(), (accumulator, currentAssembly) =>
-                {
-                    foreach (Type type in currentAssembly.GetTypes())
-                    {
-                        accumulator.Add(type);
-                    }
-                    return accumulator;
-                })
-                .Where(type => type.IsClass && type.IsPublic && !type.IsAbstract && type.IsSubclassOf(typeof(AGameEvent)))
+            var eventInstances = GetGameEventsTypes()
                 .Select(type =>
                 {
                     var ev = (AGameEvent) Activator.CreateInstance(type);
@@ -76,7 +67,7 @@ namespace Vocario.EventBasedArchitecture
             var newMap = new EventsMap();
             foreach (AGameEvent gameEvent in eventInstances)
             {
-                newMap.Add(gameEvent.GetType().ToString(), gameEvent);
+                newMap.Add(gameEvent.Name, gameEvent);
             }
 
             if (newMap == Instance._events)
@@ -91,6 +82,18 @@ namespace Vocario.EventBasedArchitecture
         }
 
 #endif
+
+        public static Type[] GetGameEventsTypes() => AppDomain.CurrentDomain.GetAssemblies()
+                .Aggregate(new List<Type>(), (accumulator, currentAssembly) =>
+                {
+                    foreach (Type type in currentAssembly.GetTypes())
+                    {
+                        accumulator.Add(type);
+                    }
+                    return accumulator;
+                })
+                .Where(type => type.IsClass && type.IsPublic && !type.IsAbstract && type.IsSubclassOf(typeof(AGameEvent)))
+                .ToArray();
 
         [SerializeField]
         protected EventsMap _events;
@@ -109,7 +112,7 @@ namespace Vocario.EventBasedArchitecture
         }
 
         // TODO Remove after second state machine refactor
-        public AGameEvent GetGameEventByName(string eventName)
+        protected AGameEvent GetGameEventByName(string eventName)
         {
             if (!_events.ContainsKey(eventName))
             {
@@ -119,8 +122,6 @@ namespace Vocario.EventBasedArchitecture
 
             return _events[ eventName ];
         }
-
-        public string[] GetEventNames() => _events.Keys.ToArray();
 
         public static bool RaiseEvent<TEvent, TParams>(TParams callParams)
             where TEvent : AGameEvent<TParams>
@@ -207,11 +208,22 @@ namespace Vocario.EventBasedArchitecture
             return Instance._events[ gameEvent.Name ].Register(listener);
         }
 
-        public static bool AddListener<TEvent>(AGameEventListener listener)
-            where TEvent : AGameEvent
+        public static bool TryAddListenerByType(Type eventType, object parent, Action handle)
         {
-            AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
-            return gameEvent != null && Instance._events[ gameEvent.Name ].Register(listener);
+            if (!eventType.IsSubclassOf(typeof(AGameEvent)))
+            {
+                Debug.LogError($"TryAddListenerByType: Supplied type is not a game event.");
+                return false;
+            }
+            AGameEvent gameEvent = Instance.GetGameEventByName(eventType.ToString());
+            if (gameEvent == null)
+            {
+                return false;
+            }
+
+            var listener = new GameEventListener(gameEvent, parent, handle);
+
+            return Instance._events[ gameEvent.Name ].Register(listener);
         }
 
         public static bool RemoveListener<TEvent>(object parent, Action handle)
@@ -222,6 +234,24 @@ namespace Vocario.EventBasedArchitecture
             {
                 return false;
             }
+            var listener = new GameEventListener(gameEvent, parent, handle);
+
+            return Instance._events[ gameEvent.Name ].Deregister(listener);
+        }
+
+        public static bool TryRemoveListenerByType(Type eventType, object parent, Action handle)
+        {
+            if (!eventType.IsSubclassOf(typeof(AGameEvent)))
+            {
+                Debug.LogError($"TryRemoveListenerByType: Supplied type is not a game event.");
+                return false;
+            }
+            AGameEvent gameEvent = Instance.GetGameEventByName(eventType.ToString());
+            if (gameEvent == null)
+            {
+                return false;
+            }
+
             var listener = new GameEventListener(gameEvent, parent, handle);
 
             return Instance._events[ gameEvent.Name ].Deregister(listener);

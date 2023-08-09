@@ -13,7 +13,7 @@ namespace Vocario.EventBasedArchitecture
         private string _name;
         public string Name => _name;
 
-        public AGameEvent() => _name = GetType().ToString();
+        public AGameEvent() => _name = GetType().FullName;
 
         [Serializable]
         protected class GameEventListenerDictionary : SerializableDictionary<int, AGameEventListener> { }
