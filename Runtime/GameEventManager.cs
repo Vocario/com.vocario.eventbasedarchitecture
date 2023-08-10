@@ -26,8 +26,12 @@ namespace Vocario.EventBasedArchitecture
         {
             if (_instance == null)
             {
-                GameEventManager[] instances = Resources.FindObjectsOfTypeAll<GameEventManager>();
-                _instance = (instances.Length > 0) ? instances[ 0 ] : null;
+                string[] guids = AssetDatabase.FindAssets("t:" + typeof(GameEventManager).Name);
+                if (guids.Length > 0)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[ 0 ]);
+                    _instance = AssetDatabase.LoadAssetAtPath<GameEventManager>(path);
+                }
             }
         }
 
@@ -103,6 +107,13 @@ namespace Vocario.EventBasedArchitecture
         [SerializeField]
         protected EventsMap _events;
 
+        private void Reset()
+        {
+            _instance = null;
+            TrySetInstance();
+            RefreshEventsCall();
+        }
+
         // TODO Create event not found exception
         protected AGameEvent GetGameEvent<TEvent>() where TEvent : AGameEvent
         {
@@ -142,7 +153,7 @@ namespace Vocario.EventBasedArchitecture
             return true;
         }
 
-        public static bool AddListener<TEvent, TParams>(object parent, Action<TParams> handle)
+        public static bool AddListener<TEvent, TParams>(object parent, UnityEngine.Events.UnityAction<TParams> handle)
             where TEvent : AGameEvent<TParams>
             where TParams : struct
         {
@@ -156,7 +167,7 @@ namespace Vocario.EventBasedArchitecture
             return ((AGameEvent<TParams>) Instance._events[ gameEvent.Name ]).Register(listener);
         }
 
-        public static bool RemoveListener<TEvent, TParams>(object parent, Action<TParams> handle)
+        public static bool RemoveListener<TEvent, TParams>(object parent, UnityEngine.Events.UnityAction<TParams> handle)
             where TEvent : AGameEvent<TParams>
             where TParams : struct
         {
@@ -200,7 +211,7 @@ namespace Vocario.EventBasedArchitecture
             return true;
         }
 
-        public static bool AddListener<TEvent>(object parent, Action handle)
+        public static bool AddListener<TEvent>(object parent, UnityEngine.Events.UnityAction handle)
             where TEvent : AGameEvent
         {
             AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
@@ -213,7 +224,7 @@ namespace Vocario.EventBasedArchitecture
             return Instance._events[ gameEvent.Name ].Register(listener);
         }
 
-        public static bool TryAddListenerByType(Type eventType, object parent, Action handle)
+        public static bool TryAddListenerByType(Type eventType, object parent, UnityEngine.Events.UnityAction handle)
         {
             if (!eventType.IsSubclassOf(typeof(AGameEvent)))
             {
@@ -231,7 +242,7 @@ namespace Vocario.EventBasedArchitecture
             return Instance._events[ gameEvent.Name ].Register(listener);
         }
 
-        public static bool RemoveListener<TEvent>(object parent, Action handle)
+        public static bool RemoveListener<TEvent>(object parent, UnityEngine.Events.UnityAction handle)
             where TEvent : AGameEvent
         {
             AGameEvent gameEvent = Instance.GetGameEvent<TEvent>();
@@ -244,7 +255,7 @@ namespace Vocario.EventBasedArchitecture
             return Instance._events[ gameEvent.Name ].Deregister(listener);
         }
 
-        public static bool TryRemoveListenerByType(Type eventType, object parent, Action handle)
+        public static bool TryRemoveListenerByType(Type eventType, object parent, UnityEngine.Events.UnityAction handle)
         {
             if (!eventType.IsSubclassOf(typeof(AGameEvent)))
             {

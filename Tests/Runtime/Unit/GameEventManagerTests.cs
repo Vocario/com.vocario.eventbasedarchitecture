@@ -2,6 +2,7 @@
 
 using UnityEngine;
 using NUnit.Framework;
+using UnityEditor;
 
 namespace Vocario.EventBasedArchitecture.Tests
 {
@@ -31,9 +32,13 @@ namespace Vocario.EventBasedArchitecture.Tests
         public void SetUp()
         {
             _eventManager = ScriptableObject.CreateInstance<GameEventManager>();
+            AssetDatabase.CreateAsset(_eventManager, "Assets/GameEventManager.asset");
             bool changed = GameEventManager.RefreshEvents();
             Assert.IsTrue(changed);
         }
+
+        [TearDown]
+        public void BaseTearDown() => _ = AssetDatabase.DeleteAsset("Assets/Resources/GameEventManager.asset");
 
         [Test]
         public void RaiseEventSuccess()

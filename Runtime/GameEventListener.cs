@@ -2,38 +2,49 @@
 
 using System;
 
+using UnityEditor.Events;
+
+using UnityEngine;
+using UnityEngine.Events;
+
 namespace Vocario.EventBasedArchitecture
 {
     public class GameEventListener<TParams> : AGameEventListener<TParams> where TParams : struct
     {
-        protected object _parent;
-        protected Action<TParams> _onEventRaised;
-
-        internal GameEventListener(AGameEvent<TParams> gameEvent, object parent, Action<TParams> onEventRaised) : base(gameEvent)
+        [SerializeField]
+        new protected UnityEvent<TParams> _onEventRaised = new UnityEvent<TParams>();
+        internal GameEventListener(AGameEvent<TParams> gameEvent, object parent, UnityAction<TParams> onEventRaised) : base(gameEvent, parent)
         {
-            _parent = parent;
-            _onEventRaised = onEventRaised;
+            if (Application.isPlaying)
+            {
+                _onEventRaised.AddListener(onEventRaised);
+            }
+            else
+            {
+                UnityEventTools.AddPersistentListener(_onEventRaised, onEventRaised);
+            }
         }
 
         public override void RaiseEvent(TParams param) => _onEventRaised?.Invoke(param);
-        public override void RaiseEvent() => _onEventRaised?.Invoke(default);
-
-        public override int GetHashCode() => HashCode.Combine(_parent, _onEventRaised);
     }
 
-    public class GameEventListener : AGameEventListener
+    public class GameEventListener : AGameEventListener<GameEventListener.DefaultParams>
     {
-        protected object _parent;
-        protected Action _onEventRaised;
-
-        internal GameEventListener(AGameEvent gameEvent, object parent, Action onEventRaised) : base(gameEvent)
+        public struct DefaultParams { }
+        [SerializeField]
+        new protected UnityEvent _onEventRaised = new UnityEvent();
+        internal GameEventListener(AGameEvent gameEvent, object parent, UnityAction onEventRaised) : base(gameEvent, parent)
         {
-            _parent = parent;
-            _onEventRaised = onEventRaised;
+            if (Application.isPlaying)
+            {
+                _onEventRaised.AddListener(onEventRaised);
+            }
+            else
+            {
+                UnityEventTools.AddPersistentListener(_onEventRaised, onEventRaised);
+            }
         }
 
-        public override void RaiseEvent() => _onEventRaised?.Invoke();
-
-        public override int GetHashCode() => HashCode.Combine(_parent, _onEventRaised);
+        public override void RaiseEvent(DefaultParams param = default) => _onEventRaised?.Invoke();
     }
 }

@@ -39,7 +39,7 @@ namespace Vocario.EventBasedArchitecture
         {
             foreach (AGameEventListener gameEventListener in _gameEventListeners.Values.Reverse<AGameEventListener>())
             {
-                gameEventListener.RaiseEvent();
+                (gameEventListener as GameEventListener).RaiseEvent();
             }
         }
     }
