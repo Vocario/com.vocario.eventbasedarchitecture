@@ -11,7 +11,7 @@ namespace Vocario.EventBasedArchitecture
 {
     public class GameEventListener<TParams> : AGameEventListener<TParams> where TParams : struct
     {
-        [SerializeField]
+        [SerializeField, HideInInspector]
         new protected UnityEvent<TParams> _onEventRaised = new UnityEvent<TParams>();
         internal GameEventListener(AGameEvent<TParams> gameEvent, object parent, UnityAction<TParams> onEventRaised) : base(gameEvent, parent)
         {
@@ -31,7 +31,7 @@ namespace Vocario.EventBasedArchitecture
     public class GameEventListener : AGameEventListener<GameEventListener.DefaultParams>
     {
         public struct DefaultParams { }
-        [SerializeField]
+        [SerializeField, HideInInspector]
         new protected UnityEvent _onEventRaised = new UnityEvent();
         internal GameEventListener(AGameEvent gameEvent, object parent, UnityAction onEventRaised) : base(gameEvent, parent)
         {
